@@ -1,12 +1,12 @@
 # Import dependencies
 import numpy as np
-
+import datetime as dt
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
-
 from flask import Flask, jsonify
+from sqlalchemy.sql.expression import distinct
 
 # Database Setup
 engine = create_engine('sqlite:///Resources/hawaii.sqlite')
@@ -56,7 +56,42 @@ def precipitation():
 
     return jsonify(prcp_list)
 
+@app.route("/api/v1.0/stations")
+def stations():
+    # Create session from Python to the DB
+    session = Session(engine)
 
+    # Query stations
+    station_query = session.query(distinct(Station.name)).all()
+
+    session.close()
+
+    # Convert list of tuples into normal list
+    all_stations = list(np.ravel(station_query))
+    
+    return jsonify(all_stations)
+
+@app.route("/api/v1.0/tobs")
+def tobs():
+    # Create session from Python to the DB
+    session = Session(engine)
+
+    # Query the dates and temperature observations of the most active station for the last year of data.
+    
+    # Calculate date for last year of data
+    # recent_date = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    one_year_prior = dt.date(2017,8,23) - dt.timedelta(days=365)
+    
+    # Query data for most active location over the last year
+    most_active = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= one_year_prior).filter(Measurement.station == 'USC00519281').all()
+    session.close()
+
+    # Convert list of tuples into normal list
+    activity = list(np.ravel(most_active))
+    
+    return jsonify(activity)
+
+    
 
 if __name__ == '__main__':
     app.run(debug=True)
